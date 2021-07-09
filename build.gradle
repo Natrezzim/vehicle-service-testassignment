@@ -1,0 +1,118 @@
+import nu.studer.gradle.jooq.JooqEdition
+
+plugins {
+    id 'org.springframework.boot' version '2.5.2'
+    id 'io.spring.dependency-management' version '1.0.11.RELEASE'
+    id 'java'
+    id 'checkstyle'
+    // jooq
+    id "nu.studer.jooq" version "$jooq_plugin_version"
+}
+
+group = 'ru.testassignment'
+version = '0.0.1-SNAPSHOT'
+sourceCompatibility = 11
+targetCompatibility = 11
+
+configurations {
+    compileOnly {
+        extendsFrom annotationProcessor
+    }
+}
+
+repositories {
+    mavenCentral()
+}
+
+dependencies {
+    //main
+    implementation 'org.springframework.boot:spring-boot-starter-jooq'
+    implementation 'org.springframework.boot:spring-boot-starter-web'
+    //lombok
+    compileOnly 'org.projectlombok:lombok'
+    annotationProcessor 'org.projectlombok:lombok'
+    //postgres
+    implementation "org.postgresql:postgresql"
+    // jooq
+    jooqGenerator "org.postgresql:postgresql:$postgresql_version"
+    implementation "org.jooq:jooq:$jooq_version"
+    //pdf
+    implementation group: 'com.itextpdf', name: 'itextpdf', version: '5.5.13'
+    //tests
+    testImplementation 'org.springframework.boot:spring-boot-starter-test'
+}
+
+test {
+    useJUnitPlatform()
+}
+
+tasks.withType(Checkstyle) {configFile file('src/main/resources/checkstyle/checkstyle.xml')
+    exclude '**/jooq/**'
+    ignoreFailures true
+    showViolations false
+}
+
+jooq {
+    version = "$jooq_version"
+    edition = JooqEdition.OSS
+
+
+    configurations {
+        xml {
+            generationTool {
+                jdbc {
+                    driver = 'org.postgresql.Driver'
+                    url = 'jdbc:postgresql://localhost:5432/vehicleservice'
+                    user = 'postgres'
+                    password = 'postgres'
+                }
+                generator {
+                    name = 'org.jooq.codegen.XMLGenerator'
+                    database {
+                        name = 'org.jooq.meta.postgres.PostgresDatabase'
+                        includes = '.*'
+                        inputSchema = 'public'
+                    }
+                    target {
+                        directory = 'src/main/resources/jooq'
+                    }
+                }
+            }
+        }
+
+        main {
+            generationTool {
+                generator {
+                    database {
+                        name = 'org.jooq.meta.xml.XMLDatabase'
+                        includes = '.*'
+                        inputSchema = 'public'
+                        properties {
+                            property {
+                                key = 'dialect'
+                                value = 'POSTGRES'
+                            }
+                            property {
+                                key = 'xmlFile'
+                                value = 'src/main/resources/jooq/org/jooq/generated/information_schema.xml'
+                            }
+                        }
+                    }
+                    generate {
+                        relations = true
+                        deprecated = false
+                        records = true
+                        pojos = true
+                        pojosEqualsAndHashCode = true
+                        fluentSetters = true
+                        javaTimeTypes = true
+                    }
+                    target {
+                        packageName = 'ru.testassignment.vehicleservice.jooq'
+                        directory = 'src/main/java/generated'
+                    }
+                }
+            }
+        }
+    }
+}
